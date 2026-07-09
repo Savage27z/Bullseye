@@ -1138,11 +1138,12 @@ function buildArrowMesh() {
 }
 
 const idleArrow = buildArrowMesh();
-// Tip toward targets (+X), nock on string. Draw slides whole arrow −X with the string.
-const ARROW_IDLE_X = 0.08;
+// Mesh tip is at +X, but bowGroup yaw (−90°) maps local +X → camera +Z (toward face).
+// Rotate 180° on Y so tip aims down-range (−Z). Nock sits near the string at x≈0.
+const ARROW_IDLE_X = -0.46;
 const ARROW_DRAW_BACK = 0.22;
+idleArrow.rotation.set(0, Math.PI, 0);
 idleArrow.position.set(ARROW_IDLE_X, 0.018, 0);
-idleArrow.rotation.set(0, 0, 0);
 nockedArrow.add(idleArrow);
 
 // ── Game state ───────────────────────────────────────────
@@ -1988,7 +1989,7 @@ function updateDraw() {
   els.drawFill.style.width = `${(state.drawPower * 100).toFixed(1)}%`;
   updateBowString(state.drawPower);
   AudioSys.updateCreak(state.drawPower);
-  // nock rides the string back toward the archer
+  // nock rides the string back toward the archer (more −X after 180° flip)
   idleArrow.position.x = ARROW_IDLE_X - state.drawPower * ARROW_DRAW_BACK;
   camera.fov = 62 - state.drawPower * 4;
   camera.updateProjectionMatrix();
