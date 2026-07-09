@@ -960,10 +960,11 @@ camera.add(bowRoot);
 scene.add(camera);
 
 const bowGroup = new THREE.Group();
-// FPS framing: lower-right; yaw −90° so local +X = camera −Z (down-range)
+// FPS framing: lower-right.
+// Yaw +90° maps local +X → camera −Z (down-range): belly (+X) faces targets, tips/string face archer.
 const BOW_BASE = { x: 0.30, y: -0.32, z: -0.58 };
 bowGroup.position.set(BOW_BASE.x, BOW_BASE.y, BOW_BASE.z);
-bowGroup.rotation.set(0.06, -Math.PI / 2 + 0.18, 0.08);
+bowGroup.rotation.set(0.06, Math.PI / 2 - 0.18, 0.08);
 bowRoot.add(bowGroup);
 
 const bowBody = new THREE.Group();
@@ -1066,7 +1067,7 @@ function placeStringSeg(mesh, a, b) {
 }
 
 function updateBowString(draw01) {
-  // Rest: string at tips (x≈0). Draw: nock pulls toward archer (−X).
+  // Rest: string at tips (x≈0). Draw: nock pulls toward archer (local −X → camera +Z).
   const pull = 0.0 - draw01 * 0.22;
   _strMid.set(pull, 0, 0);
   stringPos[0] = BOW_TIP_TOP.x; stringPos[1] = BOW_TIP_TOP.y; stringPos[2] = BOW_TIP_TOP.z;
@@ -1138,11 +1139,10 @@ function buildArrowMesh() {
 }
 
 const idleArrow = buildArrowMesh();
-// Mesh tip is at +X, but bowGroup yaw (−90°) maps local +X → camera +Z (toward face).
-// Rotate 180° on Y so tip aims down-range (−Z). Nock sits near the string at x≈0.
-const ARROW_IDLE_X = -0.46;
+// With bow yaw +90°: mesh +X (tip) → down-range. Nock at −0.46 sits on string when center ≈ +0.46.
+const ARROW_IDLE_X = 0.46;
 const ARROW_DRAW_BACK = 0.22;
-idleArrow.rotation.set(0, Math.PI, 0);
+idleArrow.rotation.set(0, 0, 0);
 idleArrow.position.set(ARROW_IDLE_X, 0.018, 0);
 nockedArrow.add(idleArrow);
 
