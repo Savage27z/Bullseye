@@ -8,6 +8,7 @@ Hand-drawn anime cel-shaded archery in the browser.
 
 | Input | Action |
 |--------|--------|
+| **A / D** or **← / →** | Strafe left / right (no forward movement) |
 | Move mouse | Aim |
 | Hold click / touch | Draw the bow |
 | Release | Fire (longer draw = more power) |

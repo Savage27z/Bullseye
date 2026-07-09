@@ -303,7 +303,7 @@
       <div id="draw-meter-label">Draw</div>
       <div id="draw-meter"><div id="draw-fill"></div></div>
     </div>
-    <div id="hint">Hold to draw · Release to fire · Move mouse to aim</div>
+    <div id="hint">A / D strafe · Hold to draw · Release to fire · Mouse aim</div>
     <div id="float-layer"></div>
   </div>
 
@@ -312,11 +312,11 @@
       <h1>Bullseye</h1>
       <p class="tag">Hand-drawn anime archery</p>
       <ul class="rules">
+        <li><strong>A / D</strong> (or ← →) to strafe left &amp; right — no walking toward the boards</li>
         <li><strong>Hold</strong> mouse / touch to draw the bow</li>
         <li><strong>Release</strong> to fire — longer draw = more power</li>
         <li>Aim with the mouse; arrows arc with gravity</li>
-        <li>Bullseye · outer rings · moving targets · wind on later rounds</li>
-        <li>Chain hits for combos before the timer runs out</li>
+        <li>Bullseye · rings · movers · wind on later rounds · chain combos</li>
       </ul>
       <button type="button" class="btn" id="btn-start">Nock &amp; Loosen!</button>
     </div>
@@ -939,95 +939,210 @@ function addBalloon(x, y, z, color, bobSpeed = 1) {
   return t;
 }
 
-// ── First-person bow ─────────────────────────────────────
+// ── First-person bow (recurve + readable arrow) ──────────
+// Camera space: +X right, +Y up, −Z down-range.
+// Bow is built so limbs run along Y, belly curves in X, arrow along +X,
+// then the whole bowGroup is yawed so +X aims down-range (−Z).
+const FP = {
+  limb: 0xd8b078,
+  limbTip: 0xc89858,
+  grip: 0x5c4034,
+  wrap: 0x8b5a44,
+  string: 0xf5f0e6,
+  shaft: 0xecd8a8,
+  tip: 0xc8d0d8,
+  fletch: 0xe05848,
+  fletch2: 0xf4ecdc,
+};
+
 const bowRoot = new THREE.Group();
 camera.add(bowRoot);
 scene.add(camera);
 
 const bowGroup = new THREE.Group();
-bowGroup.position.set(0.28, -0.28, -0.55);
-bowGroup.rotation.set(0.05, 0.15, 0.08);
+// FPS framing: lower-right; yaw −90° so local +X = camera −Z (down-range)
+const BOW_BASE = { x: 0.30, y: -0.32, z: -0.58 };
+bowGroup.position.set(BOW_BASE.x, BOW_BASE.y, BOW_BASE.z);
+bowGroup.rotation.set(0.06, -Math.PI / 2 + 0.18, 0.08);
 bowRoot.add(bowGroup);
 
-// Bow limbs (curved via several boxes / torus arc)
 const bowBody = new THREE.Group();
 bowGroup.add(bowBody);
 
-function limbSeg(y, rotZ, len) {
-  const geo = new THREE.BoxGeometry(0.04, len, 0.06);
-  const m = withOutline(new THREE.Mesh(geo, makeToon(PAL.bow, 3)), 0.012);
-  m.position.set(0, y, 0);
-  m.rotation.z = rotZ;
-  return m;
-}
-bowBody.add(limbSeg(0.22, 0.35, 0.28));
-bowBody.add(limbSeg(-0.22, -0.35, 0.28));
-const grip = withOutline(
-  new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.16, 0.07), makeToon(PAL.woodDark, 3)),
-  0.012
+// Local +X = down-range (after yaw). Belly toward targets (+X), tips/string toward archer (x≈0).
+const bowPath = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0.00, 0.50, 0),
+  new THREE.Vector3(0.05, 0.38, 0),
+  new THREE.Vector3(0.09, 0.22, 0),
+  new THREE.Vector3(0.105, 0.08, 0),
+  new THREE.Vector3(0.11, 0.0, 0),
+  new THREE.Vector3(0.105, -0.08, 0),
+  new THREE.Vector3(0.09, -0.22, 0),
+  new THREE.Vector3(0.05, -0.38, 0),
+  new THREE.Vector3(0.00, -0.50, 0),
+]);
+const limbMesh = withOutline(
+  new THREE.Mesh(new THREE.TubeGeometry(bowPath, 48, 0.015, 8, false), makeToon(FP.limb, 4, 0.12)),
+  0.011
 );
-bowBody.add(grip);
+bowBody.add(limbMesh);
 
-// String as line geometry between tips — updated when drawing
-const stringMat = new THREE.LineBasicMaterial({ color: PAL.string });
+const midPath = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0.08, 0.18, 0),
+  new THREE.Vector3(0.11, 0.0, 0),
+  new THREE.Vector3(0.08, -0.18, 0),
+]);
+bowBody.add(withOutline(
+  new THREE.Mesh(new THREE.TubeGeometry(midPath, 14, 0.022, 7, false), makeToon(FP.limbTip, 4, 0.08)),
+  0.01
+));
+
+// Leather grip
+const grip = withOutline(
+  new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.028, 0.12, 8), makeToon(FP.grip, 3, 0.05)),
+  0.009
+);
+grip.position.set(0.11, 0, 0);
+grip.rotation.z = -0.08;
+bowBody.add(grip);
+for (const gy of [0.035, -0.035]) {
+  const band = withOutline(
+    new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.007, 5, 10), makeToon(FP.wrap, 3)),
+    0.005
+  );
+  band.position.set(0.11, gy, 0);
+  band.rotation.x = Math.PI / 2;
+  bowBody.add(band);
+}
+
+// Arrow shelf on the sight window
+const rest = withOutline(
+  new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.012, 0.028), makeToon(FP.limbTip, 3)),
+  0.005
+);
+rest.position.set(0.04, 0.02, 0.02);
+bowBody.add(rest);
+
+// Tip caps
+for (const ty of [0.50, -0.50]) {
+  const cap = withOutline(
+    new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 5), makeToon(FP.limbTip, 3)),
+    0.007
+  );
+  cap.position.set(0.0, ty, 0);
+  cap.scale.set(1.1, 1.15, 0.75);
+  bowBody.add(cap);
+}
+
+// Bowstring (line + two thin tubes, no rebuild every frame)
+const stringMat = new THREE.LineBasicMaterial({ color: FP.string });
 const stringPos = new Float32Array(9);
 const stringGeo = new THREE.BufferGeometry();
 stringGeo.setAttribute("position", new THREE.BufferAttribute(stringPos, 3));
 const bowString = new THREE.Line(stringGeo, stringMat);
 bowGroup.add(bowString);
 
+const stringTubeMat = makeToon(FP.string, 2, 0.01);
+const stringUpper = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0035, 1, 5), stringTubeMat);
+const stringLower = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0035, 1, 5), stringTubeMat);
+bowGroup.add(stringUpper);
+bowGroup.add(stringLower);
+
+const BOW_TIP_TOP = new THREE.Vector3(0.0, 0.50, 0);
+const BOW_TIP_BOT = new THREE.Vector3(0.0, -0.50, 0);
+const _strMid = new THREE.Vector3();
+const _strDir = new THREE.Vector3();
+
+function placeStringSeg(mesh, a, b) {
+  mesh.position.set(
+    (a.x + b.x) * 0.5,
+    (a.y + b.y) * 0.5,
+    (a.z + b.z) * 0.5
+  );
+  const len = a.distanceTo(b);
+  mesh.scale.set(1, Math.max(len, 0.001), 1);
+  _strDir.subVectors(b, a).normalize();
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), _strDir);
+}
+
 function updateBowString(draw01) {
-  const pull = draw01 * 0.22;
-  // top tip, nock, bottom tip in bow local space
-  const top = new THREE.Vector3(0.02, 0.38, 0);
-  const bot = new THREE.Vector3(0.02, -0.38, 0);
-  const mid = new THREE.Vector3(0.02 + pull, 0, 0.02);
-  stringPos[0] = top.x; stringPos[1] = top.y; stringPos[2] = top.z;
-  stringPos[3] = mid.x; stringPos[4] = mid.y; stringPos[5] = mid.z;
-  stringPos[6] = bot.x; stringPos[7] = bot.y; stringPos[8] = bot.z;
+  // Rest: string at tips (x≈0). Draw: nock pulls toward archer (−X).
+  const pull = 0.0 - draw01 * 0.22;
+  _strMid.set(pull, 0, 0);
+  stringPos[0] = BOW_TIP_TOP.x; stringPos[1] = BOW_TIP_TOP.y; stringPos[2] = BOW_TIP_TOP.z;
+  stringPos[3] = _strMid.x; stringPos[4] = _strMid.y; stringPos[5] = _strMid.z;
+  stringPos[6] = BOW_TIP_BOT.x; stringPos[7] = BOW_TIP_BOT.y; stringPos[8] = BOW_TIP_BOT.z;
   stringGeo.attributes.position.needsUpdate = true;
-  // slight limb flex
-  bowBody.scale.x = 1 + draw01 * 0.06;
-  bowBody.rotation.z = draw01 * 0.04;
+  placeStringSeg(stringUpper, BOW_TIP_TOP, _strMid);
+  placeStringSeg(stringLower, _strMid, BOW_TIP_BOT);
+  bowBody.scale.set(1 + draw01 * 0.03, 1, 1);
+  bowBody.rotation.z = draw01 * 0.02;
 }
 updateBowString(0);
 
-// Nocked arrow (visible while drawing / idle on bow)
 const nockedArrow = new THREE.Group();
 bowGroup.add(nockedArrow);
 
+/** Arrow: tip at +X, fletching at −X (flight uses +X as forward). */
 function buildArrowMesh() {
   const g = new THREE.Group();
+
   const shaft = withOutline(
-    new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.85, 6), makeToon(PAL.arrowShaft, 3)),
-    0.008
+    new THREE.Mesh(new THREE.CylinderGeometry(0.010, 0.012, 0.92, 7), makeToon(FP.shaft, 4, 0.1)),
+    0.006
   );
   shaft.rotation.z = Math.PI / 2;
-  shaft.position.x = 0;
   g.add(shaft);
+
   const tip = withOutline(
-    new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.1, 6), makeToon(0x8a9098, 3)),
-    0.008
+    new THREE.Mesh(new THREE.ConeGeometry(0.024, 0.10, 7), makeToon(FP.tip, 3, 0.06)),
+    0.006
   );
   tip.rotation.z = -Math.PI / 2;
-  tip.position.x = 0.47;
+  tip.position.x = 0.50;
   g.add(tip);
-  // fletching
+
+  const collar = withOutline(
+    new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.028, 6), makeToon(0x9aa0a8, 3)),
+    0.004
+  );
+  collar.rotation.z = Math.PI / 2;
+  collar.position.x = 0.43;
+  g.add(collar);
+
+  const nock = withOutline(
+    new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.02, 0.014), makeToon(FP.shaft, 3)),
+    0.004
+  );
+  nock.position.x = -0.46;
+  g.add(nock);
+
+  // Feather vanes — thin boxes, clear red silhouette
   for (let i = 0; i < 3; i++) {
-    const f = withOutline(
-      new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.01), makeToon(PAL.fletch, 3)),
-      0.006
+    const vane = withOutline(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(0.13, 0.055, 0.008),
+        makeToon(i === 1 ? FP.fletch2 : FP.fletch, 3, 0.06)
+      ),
+      0.004
     );
-    f.position.set(-0.38, 0, 0);
-    f.rotation.x = (i / 3) * Math.PI * 2;
-    f.rotation.y = 0.3;
-    g.add(f);
+    const ang = (i / 3) * Math.PI * 2;
+    vane.position.set(-0.36, Math.sin(ang) * 0.02, Math.cos(ang) * 0.02);
+    vane.rotation.x = ang;
+    // taper feel
+    vane.scale.set(1, 1, 1);
+    g.add(vane);
   }
+
   return g;
 }
+
 const idleArrow = buildArrowMesh();
-idleArrow.position.set(0.15, 0, 0);
-idleArrow.rotation.y = 0;
+// Tip toward targets (+X), nock on string. Draw slides whole arrow −X with the string.
+const ARROW_IDLE_X = 0.08;
+const ARROW_DRAW_BACK = 0.22;
+idleArrow.position.set(ARROW_IDLE_X, 0.018, 0);
+idleArrow.rotation.set(0, 0, 0);
 nockedArrow.add(idleArrow);
 
 // ── Game state ───────────────────────────────────────────
@@ -1047,12 +1162,18 @@ const state = {
   drawStart: 0,
   aimYaw: 0,
   aimPitch: 0,
+  playerX: 0,
   pointerLocked: false,
   lastHitTime: 0,
   targetsRemaining: 0,
   totalRounds: 6,
   reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
 };
+
+// Side-strafe only (never toward/away from boards along Z)
+const PLAYER_SPEED = 5.2;
+const PLAYER_X_MIN = -2.35;
+const PLAYER_X_MAX = 2.35;
 
 // Round definitions
 const ROUNDS = [
@@ -1381,8 +1502,10 @@ window.addEventListener("pointercancel", onPointerUp);
 window.addEventListener("blur", () => {
   if (state.drawing) {
     state.drawing = false;
+    state.drawPower = 0;
     AudioSys.stopCreak();
     updateBowString(0);
+    idleArrow.position.x = ARROW_IDLE_X;
     els.drawWrap.style.opacity = "0";
   }
 });
@@ -1425,7 +1548,7 @@ function fireArrow() {
   state.drawPower = 0;
   AudioSys.stopCreak();
   updateBowString(0);
-  idleArrow.position.x = 0.15;
+  idleArrow.position.x = ARROW_IDLE_X;
   gsap.to(els.drawWrap, { opacity: 0, duration: 0.2, onComplete: () => {
     els.drawWrap.style.visibility = "hidden";
   }});
@@ -1435,15 +1558,14 @@ function fireArrow() {
 
   state.shots++;
   const dir = getAimDirection();
-  // slight upward bias feels better for archery
   dir.y += 0.04 * (1 - power * 0.5);
   dir.normalize();
 
   const speed = MIN_SPEED + power * (MAX_SPEED - MIN_SPEED);
   const origin = new THREE.Vector3();
   camera.getWorldPosition(origin);
-  origin.addScaledVector(dir, 0.55);
-  origin.y -= 0.04;
+  origin.addScaledVector(dir, 0.5);
+  origin.y -= 0.03;
 
   const mesh = buildArrowMesh();
   mesh.position.copy(origin);
@@ -1463,8 +1585,16 @@ function fireArrow() {
   AudioSys.whoosh(power);
 
   if (!state.reducedMotion) {
-    gsap.fromTo(bowGroup.position, { z: -0.48 }, { z: -0.55, duration: 0.25, ease: "power2.out" });
-    gsap.fromTo(bowGroup.rotation, { x: -0.08 }, { x: 0.05, duration: 0.3, ease: "elastic.out(1, 0.5)" });
+    gsap.fromTo(
+      bowGroup.position,
+      { z: BOW_BASE.z + 0.05 },
+      { z: BOW_BASE.z, duration: 0.28, ease: "power2.out" }
+    );
+    gsap.fromTo(
+      bowGroup.rotation,
+      { x: -0.1 },
+      { x: 0.06, duration: 0.35, ease: "elastic.out(1, 0.5)" }
+    );
   }
 }
 
@@ -1745,6 +1875,7 @@ function startGame() {
   state.round = 0;
   state.aimYaw = 0;
   state.aimPitch = -0.05;
+  state.playerX = 0;
   els.scoreVal.textContent = "0";
   els.comboVal.textContent = "×1";
   els.comboBubble.style.visibility = "hidden";
@@ -1779,7 +1910,7 @@ gsap.fromTo(
   { opacity: 1, scale: 1, rotation: 0, duration: 0.8, ease: "elastic.out(1, 0.5)", delay: 0.15 }
 );
 
-// ── Camera look ──────────────────────────────────────────
+// ── Camera look + left/right strafe only ─────────────────
 function updateCamera(dt) {
   const sens = 0.0022;
   state.aimYaw -= mouseDX * sens;
@@ -1789,18 +1920,40 @@ function updateCamera(dt) {
 
   const maxPitch = 1.1;
   state.aimPitch = THREE.MathUtils.clamp(state.aimPitch, -maxPitch, maxPitch);
-  // soft yaw clamp so you stay in the range
   state.aimYaw = THREE.MathUtils.clamp(state.aimYaw, -1.35, 1.35);
 
   camera.rotation.order = "YXZ";
   camera.rotation.y = state.aimYaw;
   camera.rotation.x = state.aimPitch;
 
-  // tiny idle sway
+  // A/D or arrows: move sideways only (world X). Z locked — never walk to the boards.
+  if (state.mode === "playing" || state.mode === "banner") {
+    let side = 0;
+    if (keys.KeyA || keys.ArrowLeft) side -= 1;
+    if (keys.KeyD || keys.ArrowRight) side += 1;
+    if (side !== 0) {
+      state.playerX += side * PLAYER_SPEED * dt;
+      state.playerX = THREE.MathUtils.clamp(state.playerX, PLAYER_X_MIN, PLAYER_X_MAX);
+    }
+  }
+
+  const t = performance.now() * 0.001;
+  const bob = (state.mode === "playing" && !state.reducedMotion)
+    ? Math.sin(t * 1.4) * 0.012
+    : 0;
+  camera.position.x = state.playerX;
+  camera.position.y = 1.55 + bob;
+  camera.position.z = 0; // hard lock: no forward/back
+
   if (state.mode === "playing" && !state.reducedMotion) {
-    const t = performance.now() * 0.001;
-    camera.position.y = 1.55 + Math.sin(t * 1.4) * 0.012;
-    bowGroup.position.y = -0.28 + Math.sin(t * 1.7) * 0.008;
+    bowGroup.position.y = BOW_BASE.y + Math.sin(t * 1.7) * 0.008;
+    // subtle lean into strafe
+    const lean = THREE.MathUtils.clamp(
+      ((keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0)) * 0.04,
+      -0.05,
+      0.05
+    );
+    bowGroup.position.x = BOW_BASE.x + lean * 2;
   }
 }
 
@@ -1835,9 +1988,8 @@ function updateDraw() {
   els.drawFill.style.width = `${(state.drawPower * 100).toFixed(1)}%`;
   updateBowString(state.drawPower);
   AudioSys.updateCreak(state.drawPower);
-  // pull arrow back
-  idleArrow.position.x = 0.15 - state.drawPower * 0.2;
-  // FOV squeeze
+  // nock rides the string back toward the archer
+  idleArrow.position.x = ARROW_IDLE_X - state.drawPower * ARROW_DRAW_BACK;
   camera.fov = 62 - state.drawPower * 4;
   camera.updateProjectionMatrix();
 }
