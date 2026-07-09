@@ -307,6 +307,111 @@
     }
     .hi-box strong { color: #2a2430; }
 
+    .name-row {
+      text-align: left;
+      margin-bottom: 14px;
+    }
+    .name-row label {
+      display: block;
+      font-size: 0.85rem;
+      color: #6a5f68;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .name-row input {
+      width: 100%;
+      font-family: inherit;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #2a2430;
+      background: #fffdf8;
+      border: 3px solid #1e1a22;
+      border-radius: 14px 16px 12px 15px;
+      padding: 10px 14px;
+      box-shadow: 2px 2px 0 #1e1a22;
+      outline: none;
+    }
+    .name-row input:focus {
+      border-color: #c4452d;
+      box-shadow: 2px 2px 0 #c4452d;
+    }
+    .name-row .welcome {
+      margin-top: 6px;
+      font-size: 0.98rem;
+      color: #5a8a7a;
+      min-height: 1.2em;
+    }
+    .name-row .name-error {
+      margin-top: 4px;
+      font-size: 0.9rem;
+      color: #c4452d;
+      display: none;
+    }
+    .name-row .name-error.show { display: block; }
+
+    .lb-panel {
+      text-align: left;
+      margin: 10px 0 14px;
+      padding: 10px 12px;
+      background: rgba(30,26,34,0.05);
+      border: 2.5px solid #1e1a22;
+      border-radius: 16px 18px 14px 17px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .lb-panel h3 {
+      font-size: 1.05rem;
+      margin-bottom: 8px;
+      color: #2a2430;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .lb-panel h3 .lb-sub {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #6a5f68;
+      text-transform: none;
+    }
+    .lb-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    .lb-table th {
+      text-align: left;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #6a5f68;
+      padding: 2px 4px 6px;
+      border-bottom: 2px solid #1e1a22;
+    }
+    .lb-table td {
+      padding: 6px 4px;
+      border-bottom: 1px dashed rgba(30,26,34,0.15);
+      color: #2a2430;
+    }
+    .lb-table tr.you td {
+      background: rgba(196, 69, 45, 0.12);
+      font-weight: 700;
+    }
+    .lb-table .rank { width: 2em; color: #6a5f68; }
+    .lb-table .score { font-weight: 700; color: #c4452d; text-align: right; }
+    .lb-empty {
+      font-size: 0.95rem;
+      color: #6a5f68;
+      padding: 8px 2px;
+    }
+    #player-chip {
+      position: absolute;
+      top: 62px;
+      left: 16px;
+      opacity: 0;
+      visibility: hidden;
+      font-size: 0.95rem;
+      padding: 6px 12px 8px;
+      pointer-events: none;
+    }
+    #player-chip .value { font-size: 1.1rem; }
+
     .btn {
       display: inline-block;
       font-family: inherit;
@@ -407,6 +512,10 @@
       <span class="label">Wind</span>
       <span class="value"><span class="arrow" id="wind-arrow">→</span> <span id="wind-val">0</span></span>
     </div>
+    <div class="bubble" id="player-chip">
+      <span class="label">Archer</span>
+      <span class="value" id="player-chip-name">—</span>
+    </div>
     <div class="bubble" id="perfect-toast">PERFECT RELEASE!</div>
 
     <button type="button" id="btn-pause-hud" aria-label="Pause">❚❚</button>
@@ -446,8 +555,27 @@
     <div class="title-card" id="start-card">
       <h1>Bullseye</h1>
       <p class="tag">Hand-drawn anime archery</p>
+      <div class="name-row">
+        <label for="player-name">Your archer name</label>
+        <input
+          id="player-name"
+          type="text"
+          maxlength="16"
+          minlength="2"
+          placeholder="e.g. Savage"
+          autocomplete="nickname"
+          spellcheck="false"
+          enterkeyhint="done"
+        />
+        <div class="welcome" id="name-welcome"></div>
+        <div class="name-error" id="name-error">Pick a name (2–16 letters) before you shoot.</div>
+      </div>
       <div class="hi-box" id="hi-box">
         Best: <strong id="hi-score">0</strong> · Combo <strong id="hi-combo">×1</strong> · Round <strong id="hi-round">1</strong>
+      </div>
+      <div class="lb-panel" id="lb-menu">
+        <h3>Leaderboard <span class="lb-sub">this device</span></h3>
+        <div id="lb-menu-body" class="lb-empty">No scores yet — be the first.</div>
       </div>
       <div class="mode-row">
         <button type="button" class="chip active" data-mode="campaign">Campaign</button>
@@ -463,10 +591,9 @@
       <p class="tag" style="margin-bottom:8px">Fletching (unlock by scoring)</p>
       <div class="cosmetic-row" id="cosmetic-row"></div>
       <ul class="rules">
-        <li><strong>A / D</strong> or on-screen pads — strafe only</li>
-        <li><strong>Hold</strong> to draw · <strong>Release</strong> in the red zone for Perfect</li>
-        <li>Trajectory preview while drawing · wind moves grass &amp; flags</li>
-        <li>Esc / pause · chain combos · clear boards for bonuses</li>
+        <li>Enter your <strong>name</strong> — it's saved for next time</li>
+        <li><strong>A / D</strong> or pads — strafe · hold to draw · release to fire</li>
+        <li>Scores land on the leaderboard under your name</li>
       </ul>
       <button type="button" class="btn" id="btn-start">Nock &amp; Loosen!</button>
     </div>
@@ -497,6 +624,11 @@
         <div>Perfect releases: <strong id="go-perfects">0</strong></div>
         <div>Round / wave: <strong id="go-round">1</strong></div>
         <div id="go-newhi" style="display:none;color:#c4452d;font-weight:700;margin-top:6px">★ New high score!</div>
+        <div id="go-rank" style="margin-top:6px;color:#5a8a7a;font-weight:700"></div>
+      </div>
+      <div class="lb-panel" id="lb-go">
+        <h3>Leaderboard <span class="lb-sub">top runs</span></h3>
+        <div id="lb-go-body" class="lb-empty">—</div>
       </div>
       <button type="button" class="btn" id="btn-share">Download card</button>
       <button type="button" class="btn secondary" id="btn-retry">Shoot Again</button>
@@ -552,7 +684,9 @@ const COSMETICS = [
 ];
 
 const SAVE_KEY = "bullseye_v2";
+const LB_MAX = 20;
 const defaultSave = () => ({
+  playerName: "",
   highScore: 0,
   bestCombo: 1,
   bestRound: 1,
@@ -562,11 +696,15 @@ const defaultSave = () => ({
   colorblind: false,
   mute: false,
   tutorialDone: false,
+  leaderboard: [], // { name, score, mode, combo, bulls, perfects, round, at, id }
 });
 
 function loadSave() {
   try {
-    return { ...defaultSave(), ...JSON.parse(localStorage.getItem(SAVE_KEY) || "{}") };
+    const raw = { ...defaultSave(), ...JSON.parse(localStorage.getItem(SAVE_KEY) || "{}") };
+    if (!Array.isArray(raw.leaderboard)) raw.leaderboard = [];
+    if (typeof raw.playerName !== "string") raw.playerName = "";
+    return raw;
   } catch {
     return defaultSave();
   }
@@ -575,6 +713,86 @@ function writeSave(s) {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch {}
 }
 let save = loadSave();
+
+function sanitizeName(raw) {
+  return String(raw || "")
+    .replace(/[^\p{L}\p{N} _\-'.]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 16);
+}
+function isValidName(n) {
+  return n.length >= 2 && n.length <= 16;
+}
+function getPlayerName() {
+  return sanitizeName(save.playerName);
+}
+function setPlayerName(raw) {
+  const n = sanitizeName(raw);
+  save.playerName = n;
+  writeSave(save);
+  return n;
+}
+/** Push a run onto the local leaderboard. Returns 1-based rank, or 0 if not in top LB_MAX. */
+function submitLeaderboardEntry(entry) {
+  const at = entry.at || Date.now();
+  const row = {
+    id: `${at}_${Math.random().toString(36).slice(2, 8)}`,
+    name: sanitizeName(entry.name),
+    score: entry.score | 0,
+    mode: entry.mode || "campaign",
+    combo: entry.combo | 0,
+    bulls: entry.bulls | 0,
+    perfects: entry.perfects | 0,
+    round: entry.round | 0,
+    at,
+  };
+  const list = Array.isArray(save.leaderboard) ? [...save.leaderboard] : [];
+  list.push(row);
+  list.sort((a, b) => b.score - a.score || a.at - b.at);
+  save.leaderboard = list.slice(0, LB_MAX);
+  writeSave(save);
+  const rank = save.leaderboard.findIndex((e) => e.id === row.id);
+  return rank >= 0 ? rank + 1 : 0;
+}
+function formatMode(m) {
+  if (m === "limited") return "Limited";
+  if (m === "endless") return "Endless";
+  if (m === "tutorial") return "Tutorial";
+  return "Campaign";
+}
+function renderLeaderboard(container, { highlightName = "", limit = 10 } = {}) {
+  if (!container) return;
+  const rows = (save.leaderboard || []).slice(0, limit);
+  if (!rows.length) {
+    container.className = "lb-empty";
+    container.innerHTML = "No scores yet — be the first.";
+    return;
+  }
+  container.className = "";
+  const you = sanitizeName(highlightName || save.playerName).toLowerCase();
+  let html = `<table class="lb-table" aria-label="Leaderboard"><thead><tr>
+    <th class="rank">#</th><th>Archer</th><th>Mode</th><th class="score">Score</th>
+  </tr></thead><tbody>`;
+  rows.forEach((e, i) => {
+    const isYou = you && e.name.toLowerCase() === you;
+    html += `<tr class="${isYou ? "you" : ""}">
+      <td class="rank">${i + 1}</td>
+      <td>${escapeHtml(e.name)}${isYou ? " · you" : ""}</td>
+      <td>${formatMode(e.mode)}</td>
+      <td class="score">${e.score}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+}
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 // ── DOM ──────────────────────────────────────────────────
 const canvas = document.getElementById("c");
@@ -627,6 +845,14 @@ const els = {
   optCB: $("opt-colorblind"),
   optMute: $("opt-mute"),
   cosmeticRow: $("cosmetic-row"),
+  playerName: $("player-name"),
+  nameWelcome: $("name-welcome"),
+  nameError: $("name-error"),
+  lbMenuBody: $("lb-menu-body"),
+  lbGoBody: $("lb-go-body"),
+  goRank: $("go-rank"),
+  playerChip: $("player-chip"),
+  playerChipName: $("player-chip-name"),
 };
 
 function refreshMenuMeta() {
@@ -637,6 +863,20 @@ function refreshMenuMeta() {
   els.optAim.checked = !!save.aimAssist;
   els.optCB.checked = !!save.colorblind;
   els.optMute.checked = !!save.mute;
+
+  // restore name + welcome
+  if (els.playerName && document.activeElement !== els.playerName) {
+    els.playerName.value = save.playerName || "";
+  }
+  const n = getPlayerName();
+  if (els.nameWelcome) {
+    els.nameWelcome.textContent = n
+      ? `Welcome back, ${n}! Your name is saved on this device.`
+      : "Enter a name to appear on the leaderboard.";
+  }
+  if (els.nameError) els.nameError.classList.remove("show");
+  renderLeaderboard(els.lbMenuBody, { highlightName: n, limit: 10 });
+
   els.cosmeticRow.innerHTML = "";
   COSMETICS.forEach((c) => {
     const unlocked = save.unlocked.includes(c.id) || save.highScore >= c.unlock;
@@ -661,6 +901,31 @@ function refreshMenuMeta() {
   });
 }
 refreshMenuMeta();
+
+// Persist name as they type (debounced via change/blur + input)
+function onNameInput() {
+  const n = sanitizeName(els.playerName.value);
+  els.playerName.value = n;
+  if (isValidName(n)) {
+    setPlayerName(n);
+    els.nameError?.classList.remove("show");
+    els.nameWelcome.textContent = `Saved as ${n}. You'll keep this next visit.`;
+    renderLeaderboard(els.lbMenuBody, { highlightName: n, limit: 10 });
+  } else if (!n) {
+    save.playerName = "";
+    writeSave(save);
+    els.nameWelcome.textContent = "Enter a name to appear on the leaderboard.";
+  }
+}
+els.playerName?.addEventListener("change", onNameInput);
+els.playerName?.addEventListener("blur", onNameInput);
+els.playerName?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    onNameInput();
+    els.playerName.blur();
+  }
+});
 
 let selectedMode = "campaign";
 document.querySelectorAll("[data-mode]").forEach((chip) => {
@@ -2259,6 +2524,7 @@ function endGame(clearedAll) {
   if (document.pointerLockElement) document.exitPointerLock?.();
   document.body.classList.add("menu-open");
   updateMobileUI();
+  hidePlayerChip();
 
   // unlock cosmetics
   COSMETICS.forEach((c) => {
@@ -2268,6 +2534,19 @@ function endGame(clearedAll) {
   if (state.score > save.highScore) { save.highScore = state.score; newHi = true; }
   save.bestCombo = Math.max(save.bestCombo, state.maxCombo);
   save.bestRound = Math.max(save.bestRound, state.round + 1);
+
+  const name = getPlayerName() || "Archer";
+  const at = Date.now();
+  const rank = submitLeaderboardEntry({
+    name,
+    score: state.score,
+    mode: state.playMode,
+    combo: state.maxCombo,
+    bulls: state.bullseyes,
+    perfects: state.perfects,
+    round: state.playMode === "endless" ? state.wave + 1 : state.round + 1,
+    at,
+  });
   writeSave(save);
 
   els.goTitle.textContent = clearedAll ? "Legend!" : state.playMode === "endless" ? "Endless End!" : "Time's Up!";
@@ -2278,11 +2557,36 @@ function endGame(clearedAll) {
   els.goPerfects.textContent = String(state.perfects);
   els.goRound.textContent = String(state.playMode === "endless" ? state.wave + 1 : state.round + 1);
   els.goNewhi.style.display = newHi ? "block" : "none";
+  if (els.goRank) {
+    if (rank > 0) {
+      els.goRank.textContent = rank === 1
+        ? `👑 #1 on the leaderboard — ${name}!`
+        : `#${rank} on the leaderboard — ${name}`;
+    } else {
+      els.goRank.textContent = `Logged for ${name} (outside top ${LB_MAX})`;
+    }
+  }
+  renderLeaderboard(els.lbGoBody, { highlightName: name, limit: 10 });
 
   drawShareCard();
   els.gameoverScreen.classList.remove("hidden");
   gsap.fromTo(els.gameoverCard, { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.6, ease: "elastic.out(1, 0.5)" });
   AudioSys.roundChime();
+}
+
+function showPlayerChip() {
+  const n = getPlayerName();
+  if (!els.playerChip || !n) return;
+  els.playerChipName.textContent = n;
+  els.playerChip.style.visibility = "visible";
+  gsap.to(els.playerChip, { opacity: 1, duration: 0.3 });
+}
+function hidePlayerChip() {
+  if (!els.playerChip) return;
+  gsap.to(els.playerChip, {
+    opacity: 0, duration: 0.2,
+    onComplete: () => { els.playerChip.style.visibility = "hidden"; },
+  });
 }
 
 function drawShareCard() {
@@ -2302,18 +2606,22 @@ function drawShareCard() {
   ctx.lineWidth = 5;
   roundRect(ctx, 36, 28, w - 72, h - 56, 22);
   ctx.stroke();
+  const archer = getPlayerName() || "Archer";
   ctx.fillStyle = "#2a2430";
-  ctx.font = "700 42px Caveat, cursive";
+  ctx.font = "700 38px Caveat, cursive";
   ctx.textAlign = "center";
-  ctx.fillText("Bullseye", w / 2, 78);
-  ctx.font = "700 56px Patrick Hand, cursive";
+  ctx.fillText("Bullseye", w / 2, 70);
+  ctx.font = "26px Patrick Hand, cursive";
+  ctx.fillStyle = "#5a8a7a";
+  ctx.fillText(archer, w / 2, 100);
+  ctx.font = "700 52px Patrick Hand, cursive";
   ctx.fillStyle = "#c4452d";
-  ctx.fillText(String(state.score), w / 2, 140);
+  ctx.fillText(String(state.score), w / 2, 152);
   ctx.fillStyle = "#3a3238";
-  ctx.font = "28px Patrick Hand, cursive";
-  ctx.fillText(`Combo ×${state.maxCombo}  ·  ${state.bullseyes} bullseyes`, w / 2, 180);
-  ctx.fillText(`${state.perfects} perfect  ·  ${state.playMode}`, w / 2, 214);
-  ctx.font = "22px Patrick Hand, cursive";
+  ctx.font = "26px Patrick Hand, cursive";
+  ctx.fillText(`Combo ×${state.maxCombo}  ·  ${state.bullseyes} bullseyes`, w / 2, 188);
+  ctx.fillText(`${state.perfects} perfect  ·  ${formatMode(state.playMode)}`, w / 2, 218);
+  ctx.font = "20px Patrick Hand, cursive";
   ctx.fillStyle = "#6a5f68";
   ctx.fillText("hand-drawn anime archery", w / 2, 248);
 }
@@ -2330,6 +2638,19 @@ function roundRect(ctx, x, y, w, h, r) {
 
 function startGame() {
   AudioSys.resume();
+  // require + persist archer name
+  const n = sanitizeName(els.playerName?.value || save.playerName);
+  if (els.playerName) els.playerName.value = n;
+  if (!isValidName(n)) {
+    els.nameError?.classList.add("show");
+    els.playerName?.focus();
+    els.playerName?.classList.add("shake");
+    gsap.fromTo(els.playerName, { x: -4 }, { x: 0, duration: 0.35, ease: "elastic.out(1,0.4)" });
+    return;
+  }
+  setPlayerName(n);
+  els.nameError?.classList.remove("show");
+
   save.aimAssist = els.optAim.checked;
   save.colorblind = els.optCB.checked;
   save.mute = els.optMute.checked;
@@ -2359,6 +2680,7 @@ function startGame() {
   els.pauseScreen.classList.add("hidden");
   camera.position.set(0, 1.55, 0);
   document.body.classList.remove("menu-open");
+  showPlayerChip();
 
   const wantTutorial = els.optTutorial.checked && (selectedMode === "campaign" || !save.tutorialDone);
   if (wantTutorial && selectedMode !== "endless") {
@@ -2412,6 +2734,7 @@ function goMenu() {
   state.drawing = false;
   clearEntities();
   hideTraj();
+  hidePlayerChip();
   els.pauseScreen.classList.add("hidden");
   els.gameoverScreen.classList.add("hidden");
   els.startScreen.classList.remove("hidden");
@@ -2422,7 +2745,11 @@ function goMenu() {
 }
 
 $("btn-start").addEventListener("click", startGame);
-$("btn-retry").addEventListener("click", startGame);
+$("btn-retry").addEventListener("click", () => {
+  // retry keeps current saved name — skip re-prompt friction
+  if (els.playerName && save.playerName) els.playerName.value = save.playerName;
+  startGame();
+});
 $("btn-menu").addEventListener("click", goMenu);
 $("btn-resume").addEventListener("click", resumeGame);
 $("btn-restart").addEventListener("click", () => { els.pauseScreen.classList.add("hidden"); startGame(); });

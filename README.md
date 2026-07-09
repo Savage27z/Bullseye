@@ -4,6 +4,15 @@ Hand-drawn anime cel-shaded archery in the browser.
 
 **Play:** open [`index.html`](./index.html) (needs network for Three.js + GSAP CDNs).
 
+## Player name & leaderboard
+
+- Enter an **archer name** on the main menu before playing (required).
+- Name is saved in the browser (`localStorage`) and restored next visit (“Welcome back…”).
+- Finished runs are ranked on a **local leaderboard** (top 20 on this device), highlighted as **you**.
+- Share card includes your name.
+
+> This is a **per-browser** leaderboard (no server). A global online board needs a backend — say if you want that next.
+
 ## Modes
 
 | Mode | Description |
