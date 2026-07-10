@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#3a6b72" />
   <title>Bullseye — Hand-Drawn Archery</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -10,16 +14,29 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-      width: 100%; height: 100%; overflow: hidden;
+      width: 100%; height: 100%;
+      height: 100dvh;
+      overflow: hidden;
       background: #3a6b72;
       font-family: "Patrick Hand", "Caveat", cursive, system-ui, sans-serif;
       cursor: none;
       user-select: none;
       -webkit-user-select: none;
-      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
     }
-    body.menu-open, body.paused { cursor: default; }
-    #c { display: block; width: 100%; height: 100%; }
+    /* Gameplay: no browser gestures. Menus need scroll + input. */
+    body.playing { touch-action: none; }
+    body.menu-open, body.paused {
+      cursor: default;
+      touch-action: manipulation;
+      overflow: hidden;
+    }
+    #c {
+      display: block; width: 100%; height: 100%;
+      touch-action: none;
+      position: fixed; inset: 0;
+    }
 
     #ui {
       position: fixed; inset: 0; pointer-events: none; z-index: 10;
@@ -27,9 +44,11 @@
     }
 
     .hud-top {
-      position: absolute; top: 14px; left: 0; right: 0;
+      position: absolute; top: max(10px, env(safe-area-inset-top));
+      left: 0; right: 0;
       display: flex; justify-content: space-between; align-items: flex-start;
-      padding: 0 16px; gap: 10px; flex-wrap: wrap;
+      padding: 0 max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
+      gap: 8px; flex-wrap: wrap;
     }
     .hud-left, .hud-right { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
 
@@ -175,16 +194,22 @@
 
     /* Mobile strafe + pause */
     #mobile-controls {
-      position: absolute; bottom: 18px; left: 0; right: 0;
-      display: none; justify-content: space-between; padding: 0 18px;
+      position: absolute;
+      bottom: max(14px, env(safe-area-inset-bottom));
+      left: 0; right: 0;
+      display: none;
+      justify-content: space-between;
+      padding: 0 max(16px, env(safe-area-inset-left)) 0 max(16px, env(safe-area-inset-right));
       pointer-events: auto; z-index: 12;
+      gap: 12px;
     }
     #mobile-controls.show { display: flex; }
     .pad-btn {
-      width: 64px; height: 64px;
+      width: 72px; height: 72px;
+      min-width: 72px; min-height: 72px;
       border-radius: 50%;
       border: 3.5px solid #1e1a22;
-      background: rgba(247, 240, 228, 0.88);
+      background: rgba(247, 240, 228, 0.92);
       color: #2a2430;
       font-size: 1.8rem; font-weight: 700;
       font-family: inherit;
@@ -192,6 +217,8 @@
       cursor: pointer;
       touch-action: none;
       display: flex; align-items: center; justify-content: center;
+      -webkit-user-select: none;
+      user-select: none;
     }
     .pad-btn:active, .pad-btn.held {
       transform: translate(2px, 2px);
@@ -199,10 +226,13 @@
       background: #e8c27a;
     }
     #btn-pause-hud {
-      position: absolute; top: 14px; left: 50%;
+      position: absolute;
+      top: max(10px, env(safe-area-inset-top));
+      left: 50%;
       transform: translateX(-50%);
       pointer-events: auto; z-index: 12;
-      width: 44px; height: 44px;
+      width: 48px; height: 48px;
+      min-width: 48px; min-height: 48px;
       border-radius: 14px 16px 12px 15px;
       border: 3px solid #1e1a22;
       background: #f7f0e4;
@@ -211,20 +241,27 @@
       cursor: pointer;
       font-family: inherit;
       display: none;
+      touch-action: manipulation;
     }
     #btn-pause-hud.show { display: block; }
 
     /* Screens */
     .screen {
       position: fixed; inset: 0; z-index: 20;
-      display: flex; align-items: center; justify-content: center;
+      display: flex; align-items: flex-start; justify-content: center;
       background:
         radial-gradient(ellipse 80% 60% at 50% 40%, rgba(90, 150, 155, 0.35), transparent 70%),
         linear-gradient(165deg, #4a8a8f 0%, #3a6b72 45%, #2d555c 100%);
       pointer-events: auto;
       cursor: default;
-      padding: 16px;
+      padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
       overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+    }
+    @media (min-height: 720px) {
+      .screen { align-items: center; }
     }
     .screen.hidden { display: none; }
     .screen.dim {
@@ -319,18 +356,21 @@
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
-    .name-row input {
+    .name-row input, .sb-field input {
       width: 100%;
       font-family: inherit;
-      font-size: 1.2rem;
+      font-size: 16px; /* prevents iOS zoom on focus */
       font-weight: 700;
       color: #2a2430;
       background: #fffdf8;
       border: 3px solid #1e1a22;
       border-radius: 14px 16px 12px 15px;
-      padding: 10px 14px;
+      padding: 12px 14px;
       box-shadow: 2px 2px 0 #1e1a22;
       outline: none;
+      touch-action: manipulation;
+      -webkit-appearance: none;
+      appearance: none;
     }
     .name-row input:focus {
       border-color: #c4452d;
@@ -357,8 +397,9 @@
       background: rgba(30,26,34,0.05);
       border: 2.5px solid #1e1a22;
       border-radius: 16px 18px 14px 17px;
-      max-height: 220px;
+      max-height: min(240px, 36vh);
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .lb-panel h3 {
       font-size: 1.05rem;
@@ -367,6 +408,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
     .lb-panel h3 .lb-sub {
       font-size: 0.75rem;
@@ -374,6 +417,65 @@
       color: #6a5f68;
       text-transform: none;
     }
+    .lb-tabs {
+      display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;
+    }
+    .lb-tab {
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 700;
+      padding: 6px 12px;
+      min-height: 40px;
+      border: 2.5px solid #1e1a22;
+      border-radius: 12px;
+      background: #e8e0d0;
+      color: #2a2430;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .lb-tab.active { background: #c4452d; color: #f7f0e4; }
+    .lb-status {
+      font-size: 0.82rem;
+      color: #6a5f68;
+      margin-bottom: 6px;
+      min-height: 1.1em;
+    }
+    .lb-status.ok { color: #3d7a5a; }
+    .lb-status.err { color: #c4452d; }
+    .sb-setup {
+      text-align: left;
+      margin: 8px 0 12px;
+      padding: 10px 12px;
+      background: rgba(90, 138, 122, 0.12);
+      border: 2px dashed #1e1a22;
+      border-radius: 14px;
+    }
+    .sb-setup summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: #2a2430;
+      list-style: none;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+    }
+    .sb-setup summary::-webkit-details-marker { display: none; }
+    .sb-setup .sb-help {
+      font-size: 0.88rem;
+      color: #5a4f58;
+      margin: 8px 0 10px;
+      line-height: 1.35;
+    }
+    .sb-field { margin-bottom: 8px; }
+    .sb-field label {
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #6a5f68;
+      margin-bottom: 4px;
+    }
+    .sb-setup .btn { font-size: 1rem; padding: 8px 16px; min-height: 44px; }
     .lb-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
     .lb-table th {
       text-align: left;
@@ -421,11 +523,13 @@
       background: #c4452d;
       border: 3.5px solid #1e1a22;
       border-radius: 18px 22px 16px 20px / 20px 16px 22px 18px;
-      padding: 10px 28px 12px;
+      padding: 12px 28px 14px;
+      min-height: 48px;
       cursor: pointer;
       box-shadow: 3px 4px 0 #1e1a22;
       transition: transform 0.08s ease, box-shadow 0.08s ease;
       margin: 4px;
+      touch-action: manipulation;
     }
     .btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 5px 0 #1e1a22; }
     .btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #1e1a22; }
@@ -465,8 +569,30 @@
 
     @media (max-width: 720px), (pointer: coarse) {
       #mobile-controls.show { display: flex; }
-      #hint { bottom: 96px; font-size: 0.9rem; white-space: normal; }
-      #draw-meter-wrap { bottom: 120px; }
+      #hint {
+        bottom: calc(100px + env(safe-area-inset-bottom));
+        font-size: 0.88rem;
+        white-space: normal;
+        padding: 0 12px;
+        line-height: 1.25;
+      }
+      #draw-meter-wrap {
+        bottom: calc(118px + env(safe-area-inset-bottom));
+        width: min(300px, 78vw);
+      }
+      .bubble { padding: 6px 10px 8px; font-size: 0.95rem; }
+      .bubble .value { font-size: 1.2rem; }
+      #player-chip { top: auto; bottom: auto; left: max(12px, env(safe-area-inset-left)); }
+      .title-card { padding: 20px 16px 24px; margin: 8px 0 24px; }
+      .title-card .rules { font-size: 0.9rem; }
+      .pad-btn { width: 78px; height: 78px; min-width: 78px; min-height: 78px; }
+      #crosshair { width: 36px; height: 36px; margin: -18px 0 0 -18px; }
+      #share-preview { max-height: 28vh; width: auto; margin-left: auto; margin-right: auto; }
+    }
+    @media (max-width: 380px) {
+      .hud-top { gap: 6px; }
+      .bubble .label { font-size: 0.6rem; }
+      .mode-row .chip { font-size: 0.85rem; padding: 8px 10px; min-height: 40px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -574,9 +700,31 @@
         Best: <strong id="hi-score">0</strong> · Combo <strong id="hi-combo">×1</strong> · Round <strong id="hi-round">1</strong>
       </div>
       <div class="lb-panel" id="lb-menu">
-        <h3>Leaderboard <span class="lb-sub">this device</span></h3>
+        <h3>Leaderboard <span class="lb-sub" id="lb-menu-sub">global + local</span></h3>
+        <div class="lb-tabs">
+          <button type="button" class="lb-tab active" data-lb="global">Global</button>
+          <button type="button" class="lb-tab" data-lb="local">This device</button>
+        </div>
+        <div class="lb-status" id="lb-status">Loading…</div>
         <div id="lb-menu-body" class="lb-empty">No scores yet — be the first.</div>
       </div>
+      <details class="sb-setup" id="sb-setup">
+        <summary>Online board setup (Supabase)</summary>
+        <p class="sb-help">
+          Free global ranks: create a Supabase project, run <code>supabase-setup.sql</code>,
+          paste Project URL + anon key below. Safe to leave public (RLS locks writes).
+        </p>
+        <div class="sb-field">
+          <label for="sb-url">Project URL</label>
+          <input id="sb-url" type="url" inputmode="url" autocomplete="off" placeholder="https://xxxx.supabase.co" />
+        </div>
+        <div class="sb-field">
+          <label for="sb-key">Anon public key</label>
+          <input id="sb-key" type="text" autocomplete="off" placeholder="eyJhbGciOi…" spellcheck="false" />
+        </div>
+        <button type="button" class="btn secondary" id="btn-sb-save">Save &amp; connect</button>
+        <p class="lb-status" id="sb-save-status"></p>
+      </details>
       <div class="mode-row">
         <button type="button" class="chip active" data-mode="campaign">Campaign</button>
         <button type="button" class="chip" data-mode="limited">Limited Arrows</button>
@@ -628,6 +776,11 @@
       </div>
       <div class="lb-panel" id="lb-go">
         <h3>Leaderboard <span class="lb-sub">top runs</span></h3>
+        <div class="lb-tabs">
+          <button type="button" class="lb-tab active" data-lb-go="global">Global</button>
+          <button type="button" class="lb-tab" data-lb-go="local">This device</button>
+        </div>
+        <div class="lb-status" id="lb-go-status"></div>
         <div id="lb-go-body" class="lb-empty">—</div>
       </div>
       <button type="button" class="btn" id="btn-share">Download card</button>
@@ -684,7 +837,46 @@ const COSMETICS = [
 ];
 
 const SAVE_KEY = "bullseye_v2";
+const SB_CFG_KEY = "bullseye_supabase";
 const LB_MAX = 20;
+const GLOBAL_LB_LIMIT = 25;
+
+// Optional hardcode (or paste in the menu → saved to localStorage):
+const SUPABASE_DEFAULT = {
+  url: "", // e.g. "https://xxxx.supabase.co"
+  anonKey: "", // Project Settings → API → anon public
+};
+
+function loadSupabaseCfg() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SB_CFG_KEY) || "{}");
+    return {
+      url: (stored.url || SUPABASE_DEFAULT.url || "").trim().replace(/\/$/, ""),
+      anonKey: (stored.anonKey || SUPABASE_DEFAULT.anonKey || "").trim(),
+    };
+  } catch {
+    return { url: SUPABASE_DEFAULT.url || "", anonKey: SUPABASE_DEFAULT.anonKey || "" };
+  }
+}
+function saveSupabaseCfg(url, anonKey) {
+  const cfg = {
+    url: String(url || "").trim().replace(/\/$/, ""),
+    anonKey: String(anonKey || "").trim(),
+  };
+  try { localStorage.setItem(SB_CFG_KEY, JSON.stringify(cfg)); } catch {}
+  return cfg;
+}
+let sbCfg = loadSupabaseCfg();
+function isSupabaseConfigured() {
+  return !!(
+    sbCfg.url &&
+    sbCfg.anonKey &&
+    sbCfg.url.startsWith("https://") &&
+    sbCfg.url.includes("supabase") &&
+    sbCfg.anonKey.length > 20
+  );
+}
+
 const defaultSave = () => ({
   playerName: "",
   highScore: 0,
@@ -696,7 +888,7 @@ const defaultSave = () => ({
   colorblind: false,
   mute: false,
   tutorialDone: false,
-  leaderboard: [], // { name, score, mode, combo, bulls, perfects, round, at, id }
+  leaderboard: [], // local { name, score, mode, combo, bulls, perfects, round, at, id }
 });
 
 function loadSave() {
@@ -713,6 +905,12 @@ function writeSave(s) {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch {}
 }
 let save = loadSave();
+
+// Cached global rows for UI
+let globalBoard = [];
+let globalBoardError = "";
+let menuLbTab = "global";
+let goLbTab = "global";
 
 function sanitizeName(raw) {
   return String(raw || "")
@@ -733,8 +931,9 @@ function setPlayerName(raw) {
   writeSave(save);
   return n;
 }
-/** Push a run onto the local leaderboard. Returns 1-based rank, or 0 if not in top LB_MAX. */
-function submitLeaderboardEntry(entry) {
+
+/** Local leaderboard push. Returns 1-based rank or 0. */
+function submitLocalLeaderboard(entry) {
   const at = entry.at || Date.now();
   const row = {
     id: `${at}_${Math.random().toString(36).slice(2, 8)}`,
@@ -755,18 +954,107 @@ function submitLeaderboardEntry(entry) {
   const rank = save.leaderboard.findIndex((e) => e.id === row.id);
   return rank >= 0 ? rank + 1 : 0;
 }
+
+/** Supabase REST helpers */
+async function sbFetch(path, opts = {}) {
+  if (!isSupabaseConfigured()) throw new Error("Supabase not configured");
+  const res = await fetch(`${sbCfg.url}/rest/v1/${path}`, {
+    ...opts,
+    headers: {
+      apikey: sbCfg.anonKey,
+      Authorization: `Bearer ${sbCfg.anonKey}`,
+      "Content-Type": "application/json",
+      Prefer: opts.prefer || "return=representation",
+      ...(opts.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(t || `HTTP ${res.status}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+async function fetchGlobalLeaderboard(limit = GLOBAL_LB_LIMIT) {
+  if (!isSupabaseConfigured()) {
+    globalBoard = [];
+    globalBoardError = "not_configured";
+    return [];
+  }
+  try {
+    const rows = await sbFetch(
+      `scores?select=name,score,mode,combo,bulls,perfects,round,created_at&order=score.desc&limit=${limit}`
+    );
+    globalBoard = (rows || []).map((r, i) => ({
+      id: `g_${i}_${r.created_at}`,
+      name: r.name,
+      score: r.score,
+      mode: r.mode,
+      combo: r.combo,
+      bulls: r.bulls,
+      perfects: r.perfects,
+      round: r.round,
+      at: r.created_at ? Date.parse(r.created_at) : Date.now(),
+    }));
+    globalBoardError = "";
+    return globalBoard;
+  } catch (err) {
+    globalBoardError = err.message || "fetch failed";
+    console.warn("Global leaderboard:", err);
+    return [];
+  }
+}
+
+async function submitGlobalScore(entry) {
+  if (!isSupabaseConfigured()) return { ok: false, rank: 0, reason: "not_configured" };
+  try {
+    await sbFetch("scores", {
+      method: "POST",
+      prefer: "return=minimal",
+      body: JSON.stringify({
+        name: sanitizeName(entry.name),
+        score: entry.score | 0,
+        mode: String(entry.mode || "campaign").slice(0, 24),
+        combo: entry.combo | 0,
+        bulls: entry.bulls | 0,
+        perfects: entry.perfects | 0,
+        round: entry.round | 0,
+      }),
+    });
+    await fetchGlobalLeaderboard();
+    const you = sanitizeName(entry.name).toLowerCase();
+    // Rank: first row with same name+score (best-effort)
+    let rank = 0;
+    for (let i = 0; i < globalBoard.length; i++) {
+      if (globalBoard[i].name.toLowerCase() === you && globalBoard[i].score === (entry.score | 0)) {
+        rank = i + 1;
+        break;
+      }
+    }
+    if (!rank) {
+      // count how many scores are strictly higher
+      rank = globalBoard.filter((r) => r.score > (entry.score | 0)).length + 1;
+      if (rank > GLOBAL_LB_LIMIT) rank = 0;
+    }
+    return { ok: true, rank };
+  } catch (err) {
+    console.warn("Global submit:", err);
+    return { ok: false, rank: 0, reason: err.message || "submit failed" };
+  }
+}
+
 function formatMode(m) {
   if (m === "limited") return "Limited";
   if (m === "endless") return "Endless";
   if (m === "tutorial") return "Tutorial";
   return "Campaign";
 }
-function renderLeaderboard(container, { highlightName = "", limit = 10 } = {}) {
+function renderLeaderboard(container, rows, { highlightName = "", emptyMsg = "No scores yet — be the first." } = {}) {
   if (!container) return;
-  const rows = (save.leaderboard || []).slice(0, limit);
-  if (!rows.length) {
+  if (!rows || !rows.length) {
     container.className = "lb-empty";
-    container.innerHTML = "No scores yet — be the first.";
+    container.innerHTML = emptyMsg;
     return;
   }
   container.className = "";
@@ -792,6 +1080,65 @@ function escapeHtml(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function setLbStatus(el, text, kind = "") {
+  if (!el) return;
+  el.textContent = text || "";
+  el.className = "lb-status" + (kind ? ` ${kind}` : "");
+}
+
+async function refreshMenuLeaderboard() {
+  const n = getPlayerName();
+  const status = $("lb-status");
+  if (menuLbTab === "local") {
+    setLbStatus(status, "Saved on this browser only.");
+    renderLeaderboard(els.lbMenuBody, (save.leaderboard || []).slice(0, 10), { highlightName: n });
+    return;
+  }
+  // global
+  if (!isSupabaseConfigured()) {
+    setLbStatus(status, "Online board not connected — open setup below (or view This device).", "err");
+    renderLeaderboard(els.lbMenuBody, [], {
+      emptyMsg: "Connect Supabase for global ranks. Local scores still work.",
+    });
+    return;
+  }
+  setLbStatus(status, "Loading global ranks…");
+  await fetchGlobalLeaderboard();
+  if (globalBoardError) {
+    setLbStatus(status, `Could not load global board: ${globalBoardError}`, "err");
+    renderLeaderboard(els.lbMenuBody, (save.leaderboard || []).slice(0, 10), {
+      highlightName: n,
+      emptyMsg: "Global offline — showing nothing. Try This device tab.",
+    });
+    return;
+  }
+  setLbStatus(status, `Live global top ${globalBoard.length}`, "ok");
+  renderLeaderboard(els.lbMenuBody, globalBoard.slice(0, 10), { highlightName: n });
+}
+
+async function refreshGoLeaderboard(name) {
+  const status = $("lb-go-status");
+  if (goLbTab === "local") {
+    setLbStatus(status, "This device");
+    renderLeaderboard(els.lbGoBody, (save.leaderboard || []).slice(0, 10), { highlightName: name });
+    return;
+  }
+  if (!isSupabaseConfigured()) {
+    setLbStatus(status, "Global not connected", "err");
+    renderLeaderboard(els.lbGoBody, (save.leaderboard || []).slice(0, 10), { highlightName: name });
+    return;
+  }
+  if (globalBoardError && !globalBoard.length) {
+    setLbStatus(status, "Global unavailable", "err");
+  } else {
+    setLbStatus(status, "Global", "ok");
+  }
+  renderLeaderboard(els.lbGoBody, globalBoard.slice(0, 10), {
+    highlightName: name,
+    emptyMsg: "No global scores yet.",
+  });
 }
 
 // ── DOM ──────────────────────────────────────────────────
@@ -853,6 +1200,8 @@ const els = {
   goRank: $("go-rank"),
   playerChip: $("player-chip"),
   playerChipName: $("player-chip-name"),
+  sbUrl: $("sb-url"),
+  sbKey: $("sb-key"),
 };
 
 function refreshMenuMeta() {
@@ -864,7 +1213,6 @@ function refreshMenuMeta() {
   els.optCB.checked = !!save.colorblind;
   els.optMute.checked = !!save.mute;
 
-  // restore name + welcome
   if (els.playerName && document.activeElement !== els.playerName) {
     els.playerName.value = save.playerName || "";
   }
@@ -875,7 +1223,14 @@ function refreshMenuMeta() {
       : "Enter a name to appear on the leaderboard.";
   }
   if (els.nameError) els.nameError.classList.remove("show");
-  renderLeaderboard(els.lbMenuBody, { highlightName: n, limit: 10 });
+
+  if (els.sbUrl && document.activeElement !== els.sbUrl) els.sbUrl.value = sbCfg.url || "";
+  if (els.sbKey && document.activeElement !== els.sbKey) {
+    els.sbKey.value = sbCfg.anonKey ? "••••••••" + sbCfg.anonKey.slice(-6) : "";
+    els.sbKey.dataset.filled = sbCfg.anonKey ? "1" : "";
+  }
+
+  refreshMenuLeaderboard();
 
   els.cosmeticRow.innerHTML = "";
   COSMETICS.forEach((c) => {
@@ -902,7 +1257,6 @@ function refreshMenuMeta() {
 }
 refreshMenuMeta();
 
-// Persist name as they type (debounced via change/blur + input)
 function onNameInput() {
   const n = sanitizeName(els.playerName.value);
   els.playerName.value = n;
@@ -910,7 +1264,7 @@ function onNameInput() {
     setPlayerName(n);
     els.nameError?.classList.remove("show");
     els.nameWelcome.textContent = `Saved as ${n}. You'll keep this next visit.`;
-    renderLeaderboard(els.lbMenuBody, { highlightName: n, limit: 10 });
+    refreshMenuLeaderboard();
   } else if (!n) {
     save.playerName = "";
     writeSave(save);
@@ -925,6 +1279,51 @@ els.playerName?.addEventListener("keydown", (e) => {
     onNameInput();
     els.playerName.blur();
   }
+});
+
+// Leaderboard tabs
+document.querySelectorAll("[data-lb]").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    menuLbTab = tab.dataset.lb;
+    document.querySelectorAll("[data-lb]").forEach((t) => t.classList.toggle("active", t === tab));
+    refreshMenuLeaderboard();
+  });
+});
+document.querySelectorAll("[data-lb-go]").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    goLbTab = tab.dataset.lbGo;
+    document.querySelectorAll("[data-lb-go]").forEach((t) => t.classList.toggle("active", t === tab));
+    refreshGoLeaderboard(getPlayerName());
+  });
+});
+
+// Supabase config save
+els.sbKey?.addEventListener("focus", () => {
+  if (els.sbKey.dataset.filled === "1") {
+    els.sbKey.value = "";
+    els.sbKey.dataset.filled = "";
+  }
+});
+$("btn-sb-save")?.addEventListener("click", async () => {
+  const url = els.sbUrl?.value?.trim() || "";
+  let key = els.sbKey?.value?.trim() || "";
+  if (key.startsWith("••") && sbCfg.anonKey) key = sbCfg.anonKey;
+  sbCfg = saveSupabaseCfg(url, key);
+  const st = $("sb-save-status");
+  if (!isSupabaseConfigured()) {
+    setLbStatus(st, "Need a valid https://….supabase.co URL and anon key.", "err");
+    return;
+  }
+  setLbStatus(st, "Testing connection…");
+  await fetchGlobalLeaderboard();
+  if (globalBoardError) {
+    setLbStatus(st, `Connected? But query failed: ${globalBoardError}. Check SQL + RLS.`, "err");
+  } else {
+    setLbStatus(st, "Connected! Global leaderboard live.", "ok");
+    menuLbTab = "global";
+    document.querySelectorAll("[data-lb]").forEach((t) => t.classList.toggle("active", t.dataset.lb === "global"));
+  }
+  refreshMenuLeaderboard();
 });
 
 let selectedMode = "campaign";
@@ -1988,10 +2387,12 @@ function isPlayingInput() {
   return state.mode === "playing";
 }
 
+let drawPointerId = null;
+
 function onPointerDown(e) {
   if (state.mode === "paused" || state.mode === "menu" || state.mode === "gameover") return;
   if (state.mode !== "playing") return;
-  if (e.target.closest && e.target.closest("#mobile-controls, #btn-pause-hud")) return;
+  if (e.target.closest && e.target.closest("#mobile-controls, #btn-pause-hud, .screen")) return;
   if (e.button !== 0 && e.pointerType !== "touch") return;
   if (state.ammo !== Infinity && state.ammo <= 0) {
     floatText("No arrows!", 0, 0.1, "miss");
@@ -1999,28 +2400,52 @@ function onPointerDown(e) {
   }
   AudioSys.resume();
   state.drawing = true;
+  drawPointerId = e.pointerId;
   state.drawPower = 0;
   state.drawStart = performance.now();
   els.drawWrap.style.visibility = "visible";
   els.drawWrap.style.opacity = "1";
   els.hint.style.opacity = "0";
   AudioSys.startCreak();
-  if (e.pointerType === "mouse" && !document.pointerLockElement) {
+  // Touch: aim where finger is; desktop: optional pointer lock
+  if (e.pointerType === "touch" || e.pointerType === "pen") {
+    const nx = (e.clientX / window.innerWidth) * 2 - 1;
+    const ny = (e.clientY / window.innerHeight) * 2 - 1;
+    state.aimYaw = -nx * 0.95;
+    state.aimPitch = -ny * 0.7;
+  } else if (e.pointerType === "mouse" && !document.pointerLockElement) {
     canvas.requestPointerLock?.();
   }
+  try { canvas.setPointerCapture?.(e.pointerId); } catch {}
 }
 
 function onPointerUp(e) {
   if (!state.drawing) return;
+  if (drawPointerId != null && e.pointerId != null && e.pointerId !== drawPointerId) return;
+  if (e.target?.closest?.("#mobile-controls, #btn-pause-hud")) {
+    // released on UI control — cancel draw, don't fire
+    state.drawing = false;
+    drawPointerId = null;
+    state.drawPower = 0;
+    AudioSys.stopCreak();
+    updateBowString(0);
+    idleArrow.position.x = ARROW_IDLE_X;
+    hideTraj();
+    els.drawWrap.style.opacity = "0";
+    return;
+  }
+  drawPointerId = null;
   fireArrow();
 }
 
 function onPointerMove(e) {
   if (state.mode !== "playing" && state.mode !== "banner") return;
+  if (e.target?.closest?.("#mobile-controls, #btn-pause-hud")) return;
   if (document.pointerLockElement === canvas) {
     mouseDX += e.movementX || 0;
     mouseDY += e.movementY || 0;
-  } else if (!e.target.closest?.("#mobile-controls")) {
+  } else {
+    // Finger / mouse aim toward pointer (works while drawing on mobile)
     const nx = (e.clientX / window.innerWidth) * 2 - 1;
     const ny = (e.clientY / window.innerHeight) * 2 - 1;
     state.aimYaw = -nx * 0.95;
@@ -2032,6 +2457,10 @@ canvas.addEventListener("pointerdown", onPointerDown);
 window.addEventListener("pointerup", onPointerUp);
 window.addEventListener("pointermove", onPointerMove);
 window.addEventListener("pointercancel", onPointerUp);
+// Block multi-touch scroll/zoom while playing
+canvas.addEventListener("touchstart", (e) => {
+  if (state.mode === "playing") e.preventDefault();
+}, { passive: false });
 window.addEventListener("blur", () => {
   if (state.drawing) {
     state.drawing = false;
@@ -2076,13 +2505,25 @@ bindPad(els.padRight, "right");
 
 function detectMobile() {
   const coarse = window.matchMedia("(pointer: coarse)").matches;
-  const narrow = window.innerWidth <= 720;
-  return coarse || narrow || "ontouchstart" in window;
+  const narrow = window.innerWidth <= 900;
+  const touch = navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+  return coarse || narrow || touch;
 }
 function updateMobileUI() {
-  const show = detectMobile() && (state.mode === "playing" || state.mode === "banner" || state.mode === "paused");
-  els.mobile.classList.toggle("show", show && state.mode !== "paused");
+  const mobile = detectMobile();
+  document.body.classList.toggle("is-mobile", mobile);
+  const showPads = mobile && (state.mode === "playing" || state.mode === "banner");
+  els.mobile.classList.toggle("show", showPads);
   els.pauseHud.classList.toggle("show", state.mode === "playing" || state.mode === "banner");
+  // Slightly stronger aim assist on phones if user left default off — only suggest via larger crosshair
+  els.crosshair.classList.toggle("assist", !!(save.aimAssist || (mobile && state.mode === "playing")));
+}
+// Prefer aim assist on first mobile visit (once)
+if (detectMobile() && save.aimAssist === false && !localStorage.getItem("bullseye_aim_prompted")) {
+  // soft default: enable assist for touch devices
+  save.aimAssist = true;
+  writeSave(save);
+  try { localStorage.setItem("bullseye_aim_prompted", "1"); } catch {}
 }
 
 // ── Physics ──────────────────────────────────────────────
@@ -2516,17 +2957,17 @@ function nextRoundOrEnd() {
   else endGame(true);
 }
 
-function endGame(clearedAll) {
+async function endGame(clearedAll) {
   state.mode = "gameover";
   state.drawing = false;
   AudioSys.stopCreak();
   hideTraj();
   if (document.pointerLockElement) document.exitPointerLock?.();
   document.body.classList.add("menu-open");
+  document.body.classList.remove("playing");
   updateMobileUI();
   hidePlayerChip();
 
-  // unlock cosmetics
   COSMETICS.forEach((c) => {
     if (state.score >= c.unlock && !save.unlocked.includes(c.id)) save.unlocked.push(c.id);
   });
@@ -2537,7 +2978,7 @@ function endGame(clearedAll) {
 
   const name = getPlayerName() || "Archer";
   const at = Date.now();
-  const rank = submitLeaderboardEntry({
+  const entry = {
     name,
     score: state.score,
     mode: state.playMode,
@@ -2546,7 +2987,8 @@ function endGame(clearedAll) {
     perfects: state.perfects,
     round: state.playMode === "endless" ? state.wave + 1 : state.round + 1,
     at,
-  });
+  };
+  const localRank = submitLocalLeaderboard(entry);
   writeSave(save);
 
   els.goTitle.textContent = clearedAll ? "Legend!" : state.playMode === "endless" ? "Endless End!" : "Time's Up!";
@@ -2555,23 +2997,42 @@ function endGame(clearedAll) {
   els.goShots.textContent = String(state.shots);
   els.goBulls.textContent = String(state.bullseyes);
   els.goPerfects.textContent = String(state.perfects);
-  els.goRound.textContent = String(state.playMode === "endless" ? state.wave + 1 : state.round + 1);
+  els.goRound.textContent = String(entry.round);
   els.goNewhi.style.display = newHi ? "block" : "none";
   if (els.goRank) {
-    if (rank > 0) {
-      els.goRank.textContent = rank === 1
-        ? `👑 #1 on the leaderboard — ${name}!`
-        : `#${rank} on the leaderboard — ${name}`;
-    } else {
-      els.goRank.textContent = `Logged for ${name} (outside top ${LB_MAX})`;
-    }
+    els.goRank.textContent = isSupabaseConfigured()
+      ? "Submitting to global board…"
+      : (localRank > 0
+        ? (localRank === 1 ? `👑 #1 on this device — ${name}!` : `#${localRank} on this device — ${name}`)
+        : `Saved for ${name} on this device`);
   }
-  renderLeaderboard(els.lbGoBody, { highlightName: name, limit: 10 });
+  goLbTab = isSupabaseConfigured() ? "global" : "local";
+  document.querySelectorAll("[data-lb-go]").forEach((t) => t.classList.toggle("active", t.dataset.lbGo === goLbTab));
+  await refreshGoLeaderboard(name);
 
   drawShareCard();
   els.gameoverScreen.classList.remove("hidden");
   gsap.fromTo(els.gameoverCard, { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.6, ease: "elastic.out(1, 0.5)" });
   AudioSys.roundChime();
+
+  // Global submit after UI shows
+  if (isSupabaseConfigured()) {
+    const g = await submitGlobalScore(entry);
+    if (els.goRank) {
+      if (g.ok && g.rank > 0) {
+        els.goRank.textContent = g.rank === 1
+          ? `👑 Global #1 — ${name}!`
+          : `Global #${g.rank} · local #${localRank || "—"} — ${name}`;
+      } else if (g.ok) {
+        els.goRank.textContent = `Posted globally · local #${localRank || "—"} — ${name}`;
+      } else {
+        els.goRank.textContent = `Local #${localRank || "—"} (global: ${g.reason || "failed"})`;
+      }
+    }
+    goLbTab = "global";
+    document.querySelectorAll("[data-lb-go]").forEach((t) => t.classList.toggle("active", t.dataset.lbGo === "global"));
+    await refreshGoLeaderboard(name);
+  }
 }
 
 function showPlayerChip() {
@@ -2679,8 +3140,10 @@ function startGame() {
   els.gameoverScreen.classList.add("hidden");
   els.pauseScreen.classList.add("hidden");
   camera.position.set(0, 1.55, 0);
-  document.body.classList.remove("menu-open");
+  document.body.classList.remove("menu-open", "paused");
+  document.body.classList.add("playing");
   showPlayerChip();
+  updateMobileUI();
 
   const wantTutorial = els.optTutorial.checked && (selectedMode === "campaign" || !save.tutorialDone);
   if (wantTutorial && selectedMode !== "endless") {
@@ -2713,10 +3176,12 @@ function pauseGame() {
   if (state.mode !== "playing") return;
   state.mode = "paused";
   state.drawing = false;
+  drawPointerId = null;
   AudioSys.stopCreak();
   hideTraj();
   if (document.pointerLockElement) document.exitPointerLock?.();
-  document.body.classList.add("paused");
+  document.body.classList.add("paused", "menu-open");
+  document.body.classList.remove("playing");
   els.pauseScreen.classList.remove("hidden");
   $("btn-pause-mute").textContent = save.mute ? "Unmute" : "Mute";
   updateMobileUI();
@@ -2724,7 +3189,8 @@ function pauseGame() {
 function resumeGame() {
   if (state.mode !== "paused") return;
   state.mode = "playing";
-  document.body.classList.remove("paused");
+  document.body.classList.remove("paused", "menu-open");
+  document.body.classList.add("playing");
   els.pauseScreen.classList.add("hidden");
   updateMobileUI();
 }
@@ -2739,7 +3205,7 @@ function goMenu() {
   els.gameoverScreen.classList.add("hidden");
   els.startScreen.classList.remove("hidden");
   document.body.classList.add("menu-open");
-  document.body.classList.remove("paused");
+  document.body.classList.remove("paused", "playing");
   updateMobileUI();
   refreshMenuMeta();
 }
@@ -2869,12 +3335,16 @@ function updateTimer(dt) {
   }
 }
 
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+function onResize() {
+  const w = window.innerWidth;
+  const h = window.visualViewport?.height || window.innerHeight;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(w, window.innerHeight);
   updateMobileUI();
-});
+}
+window.addEventListener("resize", onResize);
+window.visualViewport?.addEventListener("resize", onResize);
 
 // ── Main loop ────────────────────────────────────────────
 const clock = new THREE.Clock();
